@@ -1,0 +1,46 @@
+import numpy as np # package for linear algebra
+import pandas as pd # package for data manipulation
+from sklearn import feature_extraction, linear_model, model_selection, preprocessing
+
+
+
+train_df = pd.read_csv("/kaggle/input/nlp-getting-started/train.csv")
+test_df = pd.read_csv("/kaggle/input/nlp-getting-started/test.csv") #Import the training and test set
+
+train_df[train_df["target"] == 0]["text"].values[1] # Take the first observation of our training data(Where the tweet is not a disaster) and output the text from this tweet
+
+train_df[train_df["target"] == 1]["text"].values[1] #First observation where tweet was an actual disaster
+
+train_df["text"][0:1]
+
+
+
+#Use "CountVectorizer" function in python to count the words in each tweet(Useful as we can see each individual word from the tweets which is better for our ML models)
+
+
+count_vectorizer = feature_extraction.text.CountVectorizer() 
+
+## let's get counts for the first 5 tweets in the data
+example_train_vectors = count_vectorizer.fit_transform(train_df["text"][0:1])
+
+print(example_train_vectors[0].todense().shape)
+print(example_train_vectors[0].todense())
+
+train_vectors = count_vectorizer.fit_transform(train_df["text"])
+test_vectors = count_vectorizer.transform(test_df["text"]) #We use "transform" here instead of "fit_transform" so as to replicate taking as if our test data was new sample observations being taken from the training set(i.e. assumes that test data follows training data distribution)
+
+#Using ridge regression model
+#Ridge regression model is the same as OLS(i.e. minimising square residuals). However, we add in a second term that minimises the square of the weight on each individual observation. This is useful as it is making each individual weight a function of our minimisation problem which is good for problems such as this one with a very large number of regressors
+clf = linear_model.RidgeClassifier() 
+
+
+#We cross validate data against a portion of our training set to see it's predictive power. Roughly 65% accuracy in predicting whether a given tweet is referring to a real disaster or not
+scores = model_selection.cross_val_score(clf, train_vectors, train_df["target"], cv=3, scoring="f1")
+scores
+
+clf.fit(train_vectors, train_df["target"]) #Fitting our trained model on the test data
+
+sample_submission = pd.read_csv("/kaggle/input/nlp-getting-started/sample_submission.csv") 
+sample_submission["target"] = clf.predict(test_vectors) #Using the sample_submission file so we can submit our models' guesses for each observation in the correct format 
+
+sample_submission.to_csv("submission.csv", index=False)
